@@ -256,143 +256,21 @@ function updateStatistics() {
  * Export data to JSON file
  */
 async function exportData() {
-    try {
-        const exportObject = await StorageManager.exportData();
-
-        if (!exportObject) {
-            showError('Failed to export data');
-            return;
-        }
-
-        // Create blob and download
-        const blob = new Blob([JSON.stringify(exportObject, null, 2)], {
-            type: 'application/json'
-        });
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `webactigram-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        console.log('Data exported successfully');
-    } catch (error) {
-        console.error('Error exporting data:', error);
-        showError('Failed to export data');
-    }
+    return await ExportUtils.exportToJson();
 }
 
 /**
  * Export data to CSV file
  */
 async function exportToCsv() {
-    try {
-        if (!activityData || activityData.length === 0) {
-            alert('No data to export');
-            return;
-        }
-
-        // Create CSV content
-        const headers = ['Timestamp', 'Date', 'Time', 'Activity Score'];
-        const rows = activityData.map(epoch => {
-            const date = new Date(epoch.timestamp);
-            // Use MM/DD/YYYY format which Excel auto-recognizes as Short Date
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const year = date.getFullYear();
-            const formattedDate = `${month}/${day}/${year}`;
-            const time = date.toTimeString().split(' ')[0]; // HH:MM:SS
-            return [
-                `="${epoch.timestamp}"`, // Format as text for Excel to prevent scientific notation
-                formattedDate,
-                time,
-                epoch.activityScore
-            ];
-        });
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
-
-        // Create blob and download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `webactigram-export-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        console.log('CSV exported successfully');
-    } catch (error) {
-        console.error('Error exporting CSV:', error);
-        alert('Failed to export CSV');
-    }
+    return await ExportUtils.exportToCsv(activityData);
 }
 
 /**
  * Export actigram as PNG image
  */
 async function exportToPng() {
-    try {
-        const svg = document.getElementById('actigram');
-        if (!svg) {
-            console.error('SVG element not found');
-            return;
-        }
-
-        // Get SVG dimensions
-        const svgRect = svg.getBoundingClientRect();
-        const svgData = new XMLSerializer().serializeToString(svg);
-
-        // Create canvas
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        // Set canvas size to match SVG
-        canvas.width = svgRect.width;
-        canvas.height = svgRect.height;
-
-        // Create image from SVG
-        const img = new Image();
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(svgBlob);
-
-        img.onload = function () {
-            // Draw white background
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw SVG onto canvas
-            ctx.drawImage(img, 0, 0);
-
-            // Convert canvas to PNG and download
-            canvas.toBlob(function (blob) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                const filename = `WebActigram_${timestamp}.png`;
-
-                const link = document.createElement('a');
-                link.download = filename;
-                link.href = URL.createObjectURL(blob);
-                link.click();
-
-                // Cleanup
-                URL.revokeObjectURL(url);
-                URL.revokeObjectURL(link.href);
-            });
-        };
-
-        img.src = url;
-    } catch (error) {
-        console.error('Error exporting PNG:', error);
-        alert('Failed to export PNG. Please try again.');
-    }
+    return await ExportUtils.exportToPng('actigram');
 }
 
 /**
