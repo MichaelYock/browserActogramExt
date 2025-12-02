@@ -21,8 +21,17 @@
         <span id="dateRange" class="date-display">Loading...</span>
         <button id="nextDay" class="btn btn-small" title="Next day">▶</button>
       </div>
+
       <div class="view-controls">
-        <label for="daysToShow">Days to show:</label>
+        <label for="viewMode">View mode:</label>
+        <select id="viewMode">
+          <option value="days" selected>Days to show</option>
+          <option value="range">Date range</option>
+        </select>
+      </div>
+
+      <div class="view-controls" id="daysControl">
+        <label for="daysToShow">Days:</label>
         <select id="daysToShow">
           <option value="1">1 day</option>
           <option value="2" selected>2 days</option>
@@ -32,6 +41,14 @@
           <option value="90">90 days</option>
           <option value="all">All time</option>
         </select>
+      </div>
+
+      <div class="view-controls" id="rangeControl" style="display: none;">
+        <label for="startDate">From:</label>
+        <input type="date" id="startDate" class="date-input">
+        <label for="endDate">To:</label>
+        <input type="date" id="endDate" class="date-input">
+        <button id="applyRange" class="btn btn-small">Apply</button>
       </div>
     </div>
 
@@ -81,9 +98,10 @@
     </div>
 
     <footer>
-      <button id="exportPngBtn" class="btn btn-secondary">Export as PNG</button>
+      <button id="exportPngBtn" class="btn btn-secondary">Save as PNG</button>
       <button id="printBtn" class="btn btn-secondary">Save as PDF</button>
-      <button id="exportBtn" class="btn btn-secondary">Export Data</button>
+      <button id="exportBtn" class="btn btn-secondary">Export JSON</button>
+      <button id="exportCsvBtn" class="btn btn-secondary">Export CSV</button>
       <button id="optionsBtn" class="btn btn-secondary">Settings</button>
     </footer>
   </div>

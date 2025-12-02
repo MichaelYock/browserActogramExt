@@ -71,11 +71,61 @@ function setupEventListeners() {
         loadAndDisplayData();
     });
 
+    // View mode selector
+    document.getElementById('viewMode').addEventListener('change', (e) => {
+        const mode = e.target.value;
+        const daysControl = document.getElementById('daysControl');
+        const rangeControl = document.getElementById('rangeControl');
+
+        if (mode === 'days') {
+            daysControl.style.display = 'flex';
+            rangeControl.style.display = 'none';
+
+            // Reset to today when switching back to days mode
+            currentStartDate = new Date();
+            loadAndDisplayData();
+        } else {
+            daysControl.style.display = 'none';
+            rangeControl.style.display = 'flex';
+
+            // Set default dates (last 7 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7);
+
+            document.getElementById('startDate').valueAsDate = startDate;
+            document.getElementById('endDate').valueAsDate = endDate;
+        }
+    });
+
+    // Apply date range button
+    document.getElementById('applyRange').addEventListener('click', async () => {
+        const startDate = document.getElementById('startDate').valueAsDate;
+        const endDate = document.getElementById('endDate').valueAsDate;
+
+        if (startDate && endDate && startDate <= endDate) {
+            // Set currentStartDate to the END date (loadAndDisplayData calculates backwards)
+            currentStartDate = new Date(endDate);
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+            currentDaysToShow = daysDiff;
+
+            // Save preference
+            await StorageManager.saveUIPreferences({ daysToShow: currentDaysToShow });
+
+            loadAndDisplayData();
+        } else {
+            alert('Please select a valid date range (start date must be before or equal to end date)');
+        }
+    });
+
     // Export button
     document.getElementById('exportBtn').addEventListener('click', exportData);
 
     // Export as PNG button
     document.getElementById('exportPngBtn').addEventListener('click', exportToPng);
+
+    // Export as CSV button
+    document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
 
     // Save as PDF button
     document.getElementById('printBtn').addEventListener('click', () => {
@@ -232,6 +282,57 @@ async function exportData() {
     } catch (error) {
         console.error('Error exporting data:', error);
         showError('Failed to export data');
+    }
+}
+
+/**
+ * Export data to CSV file
+ */
+async function exportToCsv() {
+    try {
+        if (!activityData || activityData.length === 0) {
+            alert('No data to export');
+            return;
+        }
+
+        // Create CSV content
+        const headers = ['Timestamp', 'Date', 'Time', 'Activity Score'];
+        const rows = activityData.map(epoch => {
+            const date = new Date(epoch.timestamp);
+            // Use MM/DD/YYYY format which Excel auto-recognizes as Short Date
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            const formattedDate = `${month}/${day}/${year}`;
+            const time = date.toTimeString().split(' ')[0]; // HH:MM:SS
+            return [
+                `="${epoch.timestamp}"`, // Format as text for Excel to prevent scientific notation
+                formattedDate,
+                time,
+                epoch.activityScore
+            ];
+        });
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `webactigram-export-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log('CSV exported successfully');
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        alert('Failed to export CSV');
     }
 }
 

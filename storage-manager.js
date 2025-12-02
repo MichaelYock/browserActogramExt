@@ -15,7 +15,7 @@ const StorageManager = {
     DEFAULT_SETTINGS: {
         epochDuration: 15, // minutes
         idleThreshold: 15, // seconds
-        retentionDays: 90,
+        retentionDays: -1, // -1 = Forever
         colorScheme: 'blue',
         plotType: 'double' // 'single' or 'double'
     },

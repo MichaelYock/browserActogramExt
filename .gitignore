@@ -1,6 +1,11 @@
 # User specified
 ideas.md
 
+# Backup and temporary files
+*.backup
+*.backup*
+*.corrupted
+
 # Dependencies
 node_modules/
 

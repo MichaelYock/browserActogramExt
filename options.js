@@ -78,8 +78,10 @@ function setupEventListeners() {
         document.getElementById(id).addEventListener('change', autoSaveSettings);
     });
 
-    // Export button
+    // Export buttons
     document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
+    document.getElementById('exportPngBtn').addEventListener('click', exportToPng);
 
     // Import button
     document.getElementById('importBtn').addEventListener('click', () => {
@@ -128,7 +130,7 @@ async function autoSaveSettings() {
 }
 
 /**
- * Export data
+ * Export data as JSON
  */
 async function exportData() {
     try {
@@ -157,6 +159,77 @@ async function exportData() {
     } catch (error) {
         console.error('Error exporting data:', error);
         showStatus('Failed to export data', 'error');
+    }
+}
+
+/**
+ * Export data as CSV
+ */
+async function exportToCsv() {
+    try {
+        const data = await StorageManager.getActivityData();
+
+        if (!data || data.length === 0) {
+            showStatus('No data to export', 'error');
+            return;
+        }
+
+        // Create CSV content
+        const headers = ['Timestamp', 'Date', 'Time', 'Activity Score'];
+        const rows = data.map(epoch => {
+            const date = new Date(epoch.timestamp);
+            // Use MM/DD/YYYY format which Excel auto-recognizes as Short Date
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            const formattedDate = `${month}/${day}/${year}`;
+            const time = date.toTimeString().split(' ')[0]; // HH:MM:SS
+            return [
+                `="${epoch.timestamp}"`, // Format as text for Excel to prevent scientific notation
+                formattedDate,
+                time,
+                epoch.activityScore
+            ];
+        });
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `webactigram-export-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showStatus('CSV exported successfully!', 'success');
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        showStatus('Failed to export CSV', 'error');
+    }
+}
+
+/**
+ * Export actigram as PNG (requires chart to be rendered)
+ */
+async function exportToPng() {
+    try {
+        showStatus('Opening chart for PNG export...', 'pending');
+
+        // Open popup with auto-export parameter
+        const popupUrl = chrome.runtime.getURL('popup.html?autoExport=png');
+        window.open(popupUrl, '_blank');
+
+        showStatus('Chart opened - PNG export will start automatically', 'success');
+    } catch (error) {
+        console.error('Error exporting PNG:', error);
+        showStatus('Failed to export PNG', 'error');
     }
 }
 
