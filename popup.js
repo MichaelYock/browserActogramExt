@@ -8,12 +8,24 @@ let currentDaysToShow = 2;
 let currentStartDate = new Date();
 let activityData = [];
 let settings = {};
+let chart = null; // Chart instance
 
 /**
  * Initialize popup
  */
 async function initialize() {
     console.log('Initializing popup...');
+
+    // Global error handlers
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled rejection:', event.reason);
+        UIUtils.showToast(`Error: ${event.reason.message || event.reason}`, 'error');
+    });
+
+    window.addEventListener('error', (event) => {
+        console.error('Global error:', event.error);
+        UIUtils.showToast(`Error: ${event.message}`, 'error');
+    });
 
     // Initialize storage (IndexedDB)
     await StorageManager.initialize();
@@ -25,8 +37,8 @@ async function initialize() {
     const uiPreferences = await StorageManager.getUIPreferences();
     currentDaysToShow = uiPreferences.daysToShow;
 
-    // Initialize chart (will auto-calculate width from container)
-    ActigramChart.initialize('#actigram');
+    // Initialize chart (create new instance)
+    chart = new ActigramChart('#actigram');
 
     // Set up event listeners
     setupEventListeners();
@@ -151,25 +163,40 @@ async function loadAndDisplayData() {
         let startDate, endDate, daysToShow;
 
         if (currentDaysToShow === 'all') {
-            // Load all available data
-            activityData = await StorageManager.getActivityData();
+            // Limit "All time" to maximum of 365 days for performance
+            const MAX_DAYS_ALL_TIME = 365;
+
+            endDate = new Date();
+            endDate.setHours(23, 59, 59, 999);
+
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - MAX_DAYS_ALL_TIME + 1);
+            startDate.setHours(0, 0, 0, 0);
+
+            // Load data for the date range
+            activityData = await StorageManager.getActivityData(
+                startDate.getTime(),
+                endDate.getTime()
+            );
 
             if (activityData.length === 0) {
                 // No data available
-                startDate = new Date();
-                endDate = new Date();
                 daysToShow = 0;
             } else {
-                // Calculate date range from data
+                // Calculate actual days from the data
                 const timestamps = activityData.map(d => d.timestamp);
                 const minTime = Math.min(...timestamps);
                 const maxTime = Math.max(...timestamps);
 
-                startDate = new Date(minTime);
-                startDate.setHours(0, 0, 0, 0);
+                const actualStartDate = new Date(minTime);
+                actualStartDate.setHours(0, 0, 0, 0);
 
-                endDate = new Date(maxTime);
-                endDate.setHours(23, 59, 59, 999);
+                const actualEndDate = new Date(maxTime);
+                actualEndDate.setHours(23, 59, 59, 999);
+
+                // Update display dates to actual data range
+                startDate = actualStartDate;
+                endDate = actualEndDate;
 
                 // Calculate days between
                 daysToShow = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
@@ -198,7 +225,7 @@ async function loadAndDisplayData() {
         updateDateRangeDisplay(startDate, endDate);
 
         // Render chart
-        ActigramChart.render(activityData, daysToShow, settings.epochDuration, settings.plotType);
+        chart.render(activityData, daysToShow, settings.epochDuration, settings.plotType);
 
 
 

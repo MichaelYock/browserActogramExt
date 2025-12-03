@@ -3,26 +3,28 @@
  * Renders activity data as a heatmap-style actigram
  */
 
-const ActigramChart = {
-    // Chart configuration
-    config: {
-        margin: { top: 40, right: 60, bottom: 40, left: 80 },
-        cellHeight: 30,
-        cellPadding: 0,
-        colorScale: null,
-        svg: null,
-        width: 0,
-        height: 0
-    },
-
+class ActigramChart {
     // Color thresholds for activity levels
-    colorThresholds: [0, 20, 40, 60, 80, 100],
-    colors: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#1565C0'],
+    static colorThresholds = [0, 20, 40, 60, 80, 100];
+    static colors = ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#1565C0'];
 
     /**
-     * Initialize the chart
+     * Create a new ActigramChart instance
+     * @param {string} containerId - CSS selector for the SVG element
+     * @param {number} width - Optional width override
      */
-    initialize(containerId, width = null) {
+    constructor(containerId, width = null) {
+        // Chart configuration
+        this.config = {
+            margin: { top: 40, right: 60, bottom: 40, left: 80 },
+            cellHeight: 30,
+            cellPadding: 0,
+            colorScale: null,
+            svg: null,
+            width: 0,
+            height: 0
+        };
+
         this.config.svg = d3.select(containerId);
 
         // Get width from container if not specified
@@ -40,10 +42,8 @@ const ActigramChart = {
         // Create color scale
         this.config.colorScale = d3.scaleThreshold()
             .domain([20, 40, 60, 80])
-            .range(this.colors);
-
-        return this;
-    },
+            .range(ActigramChart.colors);
+    }
 
     /**
      * Render the actigram chart
@@ -195,7 +195,7 @@ const ActigramChart = {
                     .attr('stroke-dasharray', '4,2');
             }
         });
-    },
+    }
 
     /**
      * Process raw data into grid format
@@ -241,7 +241,7 @@ const ActigramChart = {
         }
 
         return grid;
-    },
+    }
 
     /**
      * Helper to generate epochs for a single day
@@ -275,7 +275,7 @@ const ActigramChart = {
         }
 
         return epochs;
-    },
+    }
 
     /**
      * Show tooltip on hover
@@ -302,14 +302,14 @@ const ActigramChart = {
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 10) + 'px')
             .classed('visible', true);
-    },
+    }
 
     /**
      * Hide tooltip
      */
     hideTooltip() {
         d3.select('#tooltip').classed('visible', false);
-    },
+    }
 
     /**
      * Render empty state
@@ -331,7 +331,7 @@ const ActigramChart = {
             .style('font-size', '14px')
             .style('fill', '#bbb')
             .text('Start using your browser to collect data');
-    },
+    }
 
     /**
      * Format date for display
@@ -343,7 +343,7 @@ const ActigramChart = {
             year: 'numeric'
         });
     }
-};
+}
 
 // Make available globally
 if (typeof module !== 'undefined' && module.exports) {

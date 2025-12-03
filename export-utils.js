@@ -7,16 +7,15 @@ const ExportUtils = {
     /**
      * Export data to JSON file
      */
+    /**
+     * Export data to JSON file
+     */
     async exportToJson() {
         try {
             const exportObject = await StorageManager.exportData();
 
             if (!exportObject) {
-                if (typeof UIUtils !== 'undefined') {
-                    UIUtils.showToast('Failed to export data', 'error');
-                } else {
-                    alert('Failed to export data');
-                }
+                UIUtils.showToast('Failed to export data', 'error');
                 return;
             }
 
@@ -38,11 +37,7 @@ const ExportUtils = {
             return true;
         } catch (error) {
             console.error('Error exporting JSON:', error);
-            if (typeof UIUtils !== 'undefined') {
-                UIUtils.showToast('Failed to export data', 'error');
-            } else {
-                alert('Failed to export data');
-            }
+            UIUtils.showToast('Failed to export data', 'error');
             return false;
         }
     },
@@ -56,11 +51,7 @@ const ExportUtils = {
             const activityData = data || await StorageManager.getActivityData();
 
             if (!activityData || activityData.length === 0) {
-                if (typeof UIUtils !== 'undefined') {
-                    UIUtils.showToast('No data to export', 'info');
-                } else {
-                    alert('No data to export');
-                }
+                UIUtils.showToast('No data to export', 'info');
                 return false;
             }
 
@@ -102,11 +93,7 @@ const ExportUtils = {
             return true;
         } catch (error) {
             console.error('Error exporting CSV:', error);
-            if (typeof UIUtils !== 'undefined') {
-                UIUtils.showToast('Failed to export CSV', 'error');
-            } else {
-                alert('Failed to export CSV');
-            }
+            UIUtils.showToast('Failed to export CSV', 'error');
             return false;
         }
     },
@@ -119,11 +106,7 @@ const ExportUtils = {
             const svg = document.getElementById(svgElementId);
             if (!svg) {
                 console.error('SVG element not found');
-                if (typeof UIUtils !== 'undefined') {
-                    UIUtils.showToast('Chart not found. Please ensure the chart is loaded.', 'error');
-                } else {
-                    alert('Chart not found. Please ensure the chart is loaded.');
-                }
+                UIUtils.showToast('Chart not found. Please ensure the chart is loaded.', 'error');
                 return false;
             }
 
@@ -175,11 +158,7 @@ const ExportUtils = {
                 img.onerror = function () {
                     URL.revokeObjectURL(url);
                     console.error('Error loading SVG image');
-                    if (typeof UIUtils !== 'undefined') {
-                        UIUtils.showToast('Failed to export PNG', 'error');
-                    } else {
-                        alert('Failed to export PNG');
-                    }
+                    UIUtils.showToast('Failed to export PNG', 'error');
                     reject(false);
                 };
 
@@ -187,11 +166,7 @@ const ExportUtils = {
             });
         } catch (error) {
             console.error('Error exporting PNG:', error);
-            if (typeof UIUtils !== 'undefined') {
-                UIUtils.showToast('Failed to export PNG', 'error');
-            } else {
-                alert('Failed to export PNG');
-            }
+            UIUtils.showToast('Failed to export PNG', 'error');
             return false;
         }
     }

@@ -12,6 +12,17 @@ let currentSettings = {};
 async function initialize() {
     console.log('Initializing options page...');
 
+    // Global error handlers
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled rejection:', event.reason);
+        UIUtils.showToast(`Error: ${event.reason.message || event.reason}`, 'error');
+    });
+
+    window.addEventListener('error', (event) => {
+        console.error('Global error:', event.error);
+        UIUtils.showToast(`Error: ${event.message}`, 'error');
+    });
+
     // Initialize storage (IndexedDB)
     await StorageManager.initialize();
 
