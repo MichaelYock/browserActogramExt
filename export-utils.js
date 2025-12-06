@@ -7,9 +7,6 @@ const ExportUtils = {
     /**
      * Export data to JSON file
      */
-    /**
-     * Export data to JSON file
-     */
     async exportToJson() {
         try {
             const exportObject = await StorageManager.exportData();
@@ -57,21 +54,7 @@ const ExportUtils = {
 
             // Create CSV content
             const headers = ['Timestamp', 'Date', 'Time', 'Activity Score'];
-            const rows = activityData.map(epoch => {
-                const date = new Date(epoch.timestamp);
-                // Use MM/DD/YYYY format which Excel auto-recognizes as Short Date
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const year = date.getFullYear();
-                const formattedDate = `${month}/${day}/${year}`;
-                const time = date.toTimeString().split(' ')[0]; // HH:MM:SS
-                return [
-                    `="${epoch.timestamp}"`, // Format as text for Excel to prevent scientific notation
-                    formattedDate,
-                    time,
-                    epoch.activityScore
-                ];
-            });
+            const rows = activityData.map(epoch => this.formatCsvRow(epoch));
 
             const csvContent = [
                 headers.join(','),
@@ -169,6 +152,27 @@ const ExportUtils = {
             UIUtils.showToast('Failed to export PNG', 'error');
             return false;
         }
+    },
+
+    /**
+     * Format a single epoch for CSV output
+     * @param {Object} epoch - Activity epoch
+     * @returns {Array} CSV row array
+     */
+    formatCsvRow(epoch) {
+        const date = new Date(epoch.timestamp);
+        // Use MM/DD/YYYY format which Excel auto-recognizes as Short Date
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getFullYear();
+        const formattedDate = `${month}/${day}/${year}`;
+        const time = date.toTimeString().split(' ')[0]; // HH:MM:SS
+        return [
+            `="${epoch.timestamp}"`, // Format as text for Excel to prevent scientific notation
+            formattedDate,
+            time,
+            epoch.activityScore
+        ];
     }
 };
 
