@@ -16,7 +16,7 @@ class ActogramChart {
     constructor(containerId, width = null) {
         // Chart configuration
         this.config = {
-            margin: { top: 40, right: 60, bottom: 40, left: 80 },
+            margin: { top: 100, right: 60, bottom: 40, left: 80 },
             cellHeight: 30,
             cellPadding: 0,
             colorScale: null,
@@ -138,6 +138,28 @@ class ActogramChart {
             .range([0, this.config.height])
             .padding(0.1);
 
+        // Add Chart Title
+        const startDate = new Date(d3.min(data, d => d.timestamp));
+        const endDate = new Date(d3.max(data, d => d.timestamp));
+        const dateRangeStr = `${this.formatDate(startDate)} - ${this.formatDate(endDate)}`;
+
+        g.append('text')
+            .attr('x', this.config.width / 2)
+            .attr('y', -85)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '18px')
+            .style('font-weight', 'bold')
+            .style('fill', '#333')
+            .text('Online Actogram');
+
+        g.append('text')
+            .attr('x', this.config.width / 2)
+            .attr('y', -60)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '13px')
+            .style('fill', '#666')
+            .text(`${dateRangeStr} • ${epochDuration} min epochs`);
+
         // Add X axis (hours) - DRAW AXES FIRST
         const xAxis = d3.axisTop(xScale)
             .ticks(hoursPerRow === 48 ? 24 : 24) // Show tick every 2 hours for double plot?
@@ -159,6 +181,30 @@ class ActogramChart {
         // Add Y axis (dates)
         const yAxis = d3.axisLeft(yScale);
 
+        // Smart tick values for large date ranges
+        if (gridData.length > 14) {
+            const tickValues = gridData
+                .filter(d => {
+                    const date = d.rawDate;
+                    if (gridData.length > 180) {
+                        // For > 6 months, show 1st of month
+                        return date.getDate() === 1;
+                    } else if (gridData.length > 60) {
+                        // For 2-6 months, show 1st and 15th
+                        return date.getDate() === 1 || date.getDate() === 15;
+                    } else {
+                        // For 2 weeks - 2 months, show Mondays
+                        return date.getDay() === 1;
+                    }
+                })
+                .map(d => d.date);
+
+            // Ensure we have at least some ticks, if filter is too aggressive
+            if (tickValues.length > 0) {
+                yAxis.tickValues(tickValues);
+            }
+        }
+
         g.append('g')
             .attr('class', 'axis y-axis')
             .call(yAxis);
@@ -166,7 +212,7 @@ class ActogramChart {
         // Add axis labels
         g.append('text')
             .attr('x', this.config.width / 2)
-            .attr('y', -25)
+            .attr('y', -35)
             .attr('text-anchor', 'middle')
             .style('font-size', '12px')
             .style('fill', '#666')
@@ -256,9 +302,23 @@ class ActogramChart {
         const arcThickness = 10;
         const epochAngleWidth = (epochDuration / 1440) * 2 * Math.PI;
 
-        // Calculate SVG size
+        // Calculate dimensions and dynamic scaling
         const maxRadius = baseRadius + (effectiveDays * radialStep);
-        const svgSize = maxRadius * 2 + 100; // Padding
+        const visualRadius = maxRadius + 40; // Account for time labels
+        const diameter = visualRadius * 2;
+
+        // Calculate SVG size to maintain constant padding ratio
+        // We want ~200px of padding (100px top/bottom) on a standard 800px wide chart
+        // This ensures the title (at y=50, y=80) fits in the top margin
+        const targetPaddingRatio = 200 / 800; // 0.25
+        const contentRatio = 1 - targetPaddingRatio; // 0.75
+
+        const svgSize = diameter / contentRatio;
+        const scaleFactor = svgSize / 800; // No Math.max clamp!
+
+        const titleFontSize = 18 * scaleFactor;
+        const subtitleFontSize = 13 * scaleFactor;
+
         const centerX = svgSize / 2;
         const centerY = svgSize / 2;
 
@@ -268,6 +328,28 @@ class ActogramChart {
             .attr('preserveAspectRatio', 'xMidYMid meet')
             .style('width', '100%')
             .style('height', 'auto');
+
+        // Add Chart Title (Spiral)
+        const startDate = new Date(d3.min(data, d => d.timestamp));
+        const endDate = new Date(d3.max(data, d => d.timestamp));
+        const dateRangeStr = `${this.formatDate(startDate)} - ${this.formatDate(endDate)}`;
+
+        this.config.svg.append('text')
+            .attr('x', centerX)
+            .attr('y', 50 * scaleFactor)
+            .attr('text-anchor', 'middle')
+            .style('font-size', `${titleFontSize}px`)
+            .style('font-weight', 'bold')
+            .style('fill', '#333')
+            .text('Online Actogram');
+
+        this.config.svg.append('text')
+            .attr('x', centerX)
+            .attr('y', 80 * scaleFactor)
+            .attr('text-anchor', 'middle')
+            .style('font-size', `${subtitleFontSize}px`)
+            .style('fill', '#666')
+            .text(`${dateRangeStr} • ${epochDuration} min epochs`);
 
         // Create main group
         const g = this.config.svg.append('g')
@@ -424,6 +506,7 @@ class ActogramChart {
 
             const dayData = {
                 date: this.formatDate(currentDate),
+                rawDate: new Date(currentDate),
                 epochs: []
             };
 
