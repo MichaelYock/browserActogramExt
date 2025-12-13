@@ -446,15 +446,33 @@ class ActogramChart {
     processDataToSpiral(data, daysToShow, epochDuration) {
         const spiralData = [];
 
-        // Get date range
-        const endDate = new Date();
+        if (!data || data.length === 0) return spiralData;
+
+        // Get actual date range from data
+        const dataStart = new Date(Math.min(...data.map(d => d.timestamp)));
+        const dataEnd = new Date(Math.max(...data.map(d => d.timestamp)));
+
+        // Cap at 90 days for spiral view
+        const MAX_SPIRAL_DAYS = 90;
+        let effectiveDays;
+
+        if (daysToShow === 'all') {
+            // For spiral view, limit to MAX_SPIRAL_DAYS even for "all"
+            const totalDays = Math.ceil((dataEnd - dataStart) / (1000 * 60 * 60 * 24));
+            effectiveDays = Math.min(totalDays, MAX_SPIRAL_DAYS);
+        } else {
+            effectiveDays = Math.min(daysToShow, MAX_SPIRAL_DAYS);
+        }
+
+        // Get date range for display
+        const endDate = new Date(dataEnd);
         const startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - daysToShow + 1);
+        startDate.setDate(startDate.getDate() - effectiveDays + 1);
         startDate.setHours(0, 0, 0, 0);
 
         const epochsPerDay = (24 * 60) / epochDuration;
 
-        for (let dayIndex = 0; dayIndex < daysToShow; dayIndex++) {
+        for (let dayIndex = 0; dayIndex < effectiveDays; dayIndex++) {
             const currentDate = new Date(startDate);
             currentDate.setDate(currentDate.getDate() + dayIndex);
             currentDate.setHours(0, 0, 0, 0);
@@ -489,18 +507,37 @@ class ActogramChart {
     processDataToGrid(data, daysToShow, epochDuration, plotType = 'double') {
         if (!data || data.length === 0) return [];
 
-        // Get date range
-        // For double plot, we need to ensure we have enough days generated
-        const endDate = new Date();
-        const startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - daysToShow + 1);
-        startDate.setHours(0, 0, 0, 0);
+        // Get actual date range from data
+        const dataStart = new Date(Math.min(...data.map(d => d.timestamp)));
+        const dataEnd = new Date(Math.max(...data.map(d => d.timestamp)));
 
-        // Create grid structure
+        // For "daysToShow" functionality, we need to determine the actual range
+        // If daysToShow is a specific number, we show that many days ending with dataEnd
+        // If daysToShow is 'all', we show all data
+        let startDate, endDate;
+
+        if (daysToShow === 'all') {
+            startDate = new Date(dataStart);
+            endDate = new Date(dataEnd);
+        } else {
+            // Show the specified number of days ending with dataEnd
+            endDate = new Date(dataEnd);
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - daysToShow + 1);
+        }
+
+        // Ensure we're working with start/end of days
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        // Create grid structure for the actual date range in data
         const grid = [];
+        const timeDiff = endDate - startDate;
+        const daysInRange = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+
         const epochsPerDay = (24 * 60) / epochDuration;
 
-        for (let day = 0; day < daysToShow; day++) {
+        for (let day = 0; day < daysInRange; day++) {
             const currentDate = new Date(startDate);
             currentDate.setDate(currentDate.getDate() + day);
 

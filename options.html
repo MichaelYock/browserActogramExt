@@ -89,7 +89,19 @@
             </section>
 
             <section class="settings-section">
-                <h2>Data Management</h2>
+                <h2>Sleep Analysis</h2>
+
+                <div class="setting-item">
+                    <label>
+                        <strong>Recent Analysis</strong>
+                        <span class="description">View your latest sleep/wake cycle analysis</span>
+                    </label>
+                    <div id="sleepAnalysisResults">
+                        <p>No analysis data available. Analysis runs automatically daily.</p>
+                    </div>
+                    <button id="runAnalysisBtn" class="btn btn-primary">Run Analysis Now</button>
+                </div>
+            </section>
 
                 <div class="setting-item">
                     <label>
@@ -166,6 +178,7 @@
     <script src="ui-utils.js"></script>
     <script src="indexeddb-manager.js"></script>
     <script src="storage-manager.js"></script>
+    <script src="analysis-utils.js"></script>
     <script src="export-utils.js"></script>
     <script src="options.js"></script>
 

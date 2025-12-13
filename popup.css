@@ -133,9 +133,62 @@ h1 {
   min-height: 300px;
 }
 
-#actogram {
-  width: 100%;
-  height: auto;
+#analysis-container {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  min-height: 300px;
+}
+
+.analysis-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.analysis-section:last-child {
+  border-bottom: none;
+}
+
+.analysis-section h4 {
+  color: #1565C0;
+  margin-bottom: 10px;
+}
+
+.analysis-section h5 {
+  color: #333;
+  margin: 10px 0 5px 0;
+}
+
+.analysis-section p {
+  margin: 5px 0;
+  color: #555;
+}
+
+.cycle-list {
+  margin-top: 10px;
+}
+
+.cycle-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.cycle-item:last-child {
+  border-bottom: none;
+}
+
+.cycle-date {
+  font-weight: 500;
+  color: #333;
+}
+
+.cycle-times {
+  color: #666;
 }
 
 .legend {

@@ -5,7 +5,7 @@
 
 // Import storage manager (for Chrome MV3, we need to use importScripts)
 if (typeof importScripts === 'function') {
-    importScripts('indexeddb-manager.js', 'storage-manager.js');
+    importScripts('indexeddb-manager.js', 'storage-manager.js', 'analysis-utils.js');
 }
 
 // Activity tracking state - kept in memory for speed, but persisted to storage
@@ -67,6 +67,12 @@ async function initialize() {
 
         // Set up daily cleanup
         chrome.alarms.create('cleanup', { periodInMinutes: 1440 }); // 24 hours
+
+        // Set up sleep analysis (daily at 2 AM)
+        chrome.alarms.create('sleepAnalysis', {
+            delayInMinutes: 120, // 2 hours from now
+            periodInMinutes: 1440 // 24 hours
+        });
 
         isInitialized = true;
         console.log('Browser Actogram: Initialization complete');
@@ -245,6 +251,44 @@ async function finalizeEpoch() {
 }
 
 /**
+ * Perform sleep/wake cycle analysis
+ */
+async function performSleepAnalysis() {
+    try {
+        console.log('Performing sleep analysis...');
+
+        // Get activity data for the last 30 days
+        const endDate = Date.now();
+        const startDate = endDate - (30 * 24 * 60 * 60 * 1000); // 30 days ago
+        const activityData = await StorageManager.getActivityData(startDate, endDate);
+
+        if (activityData.length === 0) {
+            console.log('No activity data available for sleep analysis');
+            return;
+        }
+
+        // Get settings for analysis
+        const settings = await StorageManager.getSettings();
+
+        // Perform analysis
+        const analysisResult = AnalysisUtils.detectSleepWakeCycles(activityData, settings);
+
+        // Store analysis result
+        const analysisRecord = {
+            timestamp: Date.now(),
+            result: analysisResult
+        };
+
+        // Save to storage (using chrome.storage.local for analysis results)
+        await chrome.storage.local.set({ lastSleepAnalysis: analysisRecord });
+
+        console.log('Sleep analysis completed:', analysisResult);
+    } catch (error) {
+        console.error('Error performing sleep analysis:', error);
+    }
+}
+
+/**
  * Handle alarms
  */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -253,6 +297,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     } else if (alarm.name === 'cleanup') {
         // Daily cleanup of old data
         await StorageManager.cleanupOldData();
+    } else if (alarm.name === 'sleepAnalysis') {
+        // Perform periodic sleep analysis
+        await performSleepAnalysis();
     }
 });
 
@@ -286,3 +333,21 @@ chrome.action.onClicked.addListener(() => {
 
 // Initialize on script load (for service worker)
 initialize();
+
+/**
+ * Handle messages from other parts of the extension
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'runSleepAnalysis') {
+        // Run sleep analysis
+        performSleepAnalysis().then(() => {
+            sendResponse({ success: true });
+        }).catch(error => {
+            console.error('Error running sleep analysis:', error);
+            sendResponse({ success: false, error: error.message });
+        });
+
+        // Return true to indicate we'll send a response asynchronously
+        return true;
+    }
+});

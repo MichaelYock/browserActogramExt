@@ -35,6 +35,9 @@ async function initialize() {
     // Check history data existence
     checkHistoryDataExistence();
 
+    // Load sleep analysis results
+    await loadSleepAnalysisResults();
+
     // Set up event listeners
     setupEventListeners();
 
@@ -115,6 +118,9 @@ function setupEventListeners() {
         document.getElementById('checkHistoryBtn').style.display = 'inline-block';
     });
     document.getElementById('deleteHistoryBtn').addEventListener('click', deleteHistoryData);
+
+    // Sleep Analysis Controls
+    document.getElementById('runAnalysisBtn').addEventListener('click', runSleepAnalysis);
 }
 
 /**
@@ -409,16 +415,87 @@ async function deleteHistoryData() {
  * Check if history data exists to show/hide delete button
  */
 async function checkHistoryDataExistence() {
-    // We'd need a way to check this efficiently. 
+    // We'd need a way to check this efficiently.
     // For now, let's just show it if we have any data, or maybe we can add a method to StorageManager?
     // Or just always show it if permission is granted?
-    // Let's leave it hidden by default and only show if we just imported, 
+    // Let's leave it hidden by default and only show if we just imported,
     // or if we implement a check.
     // For now, let's just show it if permission is granted.
 
     const hasPermission = await chrome.permissions.contains({ permissions: ['history'] });
     if (hasPermission) {
         document.getElementById('historyDeleteControls').style.display = 'block';
+    }
+}
+
+async function loadSleepAnalysisResults() {
+    try {
+        const result = await chrome.storage.local.get('lastSleepAnalysis');
+        const analysisContainer = document.getElementById('sleepAnalysisResults');
+
+        if (!result.lastSleepAnalysis) {
+            analysisContainer.innerHTML = '<p>No analysis data available. Analysis runs automatically daily.</p>';
+            return;
+        }
+
+        const analysis = result.lastSleepAnalysis;
+        const date = new Date(analysis.timestamp).toLocaleDateString();
+
+        let html = `<p>Last analysis: ${date}</p>`;
+
+        if (analysis.result && analysis.result.summary) {
+            const summary = analysis.result.summary;
+            html += '<div class="info-box">';
+            html += `<p>Total days analyzed: ${summary.totalDays || 0}</p>`;
+            html += `<p>Days with sleep data: ${summary.daysWithSleepData || 0}</p>`;
+
+            if (summary.avgSleepDuration) {
+                const hours = Math.floor(summary.avgSleepDuration / 60);
+                const minutes = summary.avgSleepDuration % 60;
+                html += `<p>Average sleep duration: ${hours}h ${minutes}m</p>`;
+            }
+
+            if (summary.avgSleepStart) {
+                const sleepStart = new Date(0);
+                sleepStart.setHours(Math.floor(summary.avgSleepStart));
+                sleepStart.setMinutes((summary.avgSleepStart % 1) * 60);
+                html += `<p>Average sleep start: ${sleepStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>`;
+            }
+
+            html += '</div>';
+        }
+
+        analysisContainer.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading sleep analysis:', error);
+        document.getElementById('sleepAnalysisResults').innerHTML =
+            '<p>Error loading analysis data.</p>';
+    }
+}
+
+/**
+ * Run sleep analysis manually
+ */
+async function runSleepAnalysis() {
+    try {
+        showStatus('Running sleep analysis...', 'pending');
+        document.getElementById('runAnalysisBtn').disabled = true;
+
+        // Send message to background script to run analysis
+        await chrome.runtime.sendMessage({ action: 'runSleepAnalysis' });
+
+        // Wait a moment for analysis to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Reload results
+        await loadSleepAnalysisResults();
+
+        showStatus('Sleep analysis completed!', 'success');
+    } catch (error) {
+        console.error('Error running sleep analysis:', error);
+        showStatus('Error running analysis', 'error');
+    } finally {
+        document.getElementById('runAnalysisBtn').disabled = false;
     }
 }
 

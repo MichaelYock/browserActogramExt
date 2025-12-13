@@ -90,7 +90,15 @@
       </div>
     </div>
 
+    <div id="analysis-container" style="display: none;">
+      <h3>Sleep/Wake Analysis</h3>
+      <div id="sleep-analysis-content">
+        <!-- Analysis content will be populated by JavaScript -->
+      </div>
+    </div>
+
     <footer>
+      <button id="toggleViewBtn" class="btn btn-secondary">Show Analysis</button>
       <button id="exportPngBtn" class="btn btn-secondary">Save as PNG</button>
       <button id="printBtn" class="btn btn-secondary">Save as PDF</button>
       <button id="exportBtn" class="btn btn-secondary">Export JSON</button>
@@ -106,6 +114,7 @@
   <script src="ui-utils.js"></script>
   <script src="indexeddb-manager.js"></script>
   <script src="storage-manager.js"></script>
+  <script src="analysis-utils.js"></script>
   <script src="actogram-chart.js"></script>
   <script src="export-utils.js"></script>
   <script src="popup.js"></script>

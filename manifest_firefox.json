@@ -12,6 +12,7 @@
         "scripts": [
             "browser-polyfill.js",
             "storage-manager.js",
+            "analysis-utils.js",
             "background.js"
         ]
     },

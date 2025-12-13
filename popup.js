@@ -10,6 +10,7 @@ let currentStartDate = new Date();
 let activityData = [];
 let settings = {};
 let chart = null; // Chart instance
+let isAnalysisView = false; // Toggle between chart and analysis view
 
 /**
  * Initialize popup
@@ -168,6 +169,9 @@ function setupEventListeners() {
     document.getElementById('optionsBtn').addEventListener('click', () => {
         chrome.runtime.openOptionsPage();
     });
+
+    // Toggle view button
+    document.getElementById('toggleViewBtn').addEventListener('click', toggleView);
 }
 
 /**
@@ -234,15 +238,13 @@ async function loadAndDisplayData() {
             );
         }
 
-        console.log(`Loaded ${activityData.length} data points for ${daysToShow} days`);
-
         // Update date range display
         updateDateRangeDisplay(startDate, endDate);
 
         // Render chart
-        chart.render(activityData, daysToShow, settings.epochDuration, settings.plotType, currentChartView);
-
-
+        if (chart) {
+            chart.render(activityData, daysToShow, settings.epochDuration, settings.plotType, currentChartView);
+        }
 
     } catch (error) {
         console.error('Error loading data:', error);
@@ -295,10 +297,140 @@ async function exportToPng() {
 }
 
 /**
- * Show error message
+ * Toggle between chart view and analysis view
  */
-function showError(message) {
-    UIUtils.showToast(message, 'error');
+function toggleView() {
+    isAnalysisView = !isAnalysisView;
+    const toggleBtn = document.getElementById('toggleViewBtn');
+
+    if (isAnalysisView) {
+        // Switch to analysis view
+        document.getElementById('chart-container').style.display = 'none';
+        document.getElementById('analysis-container').style.display = 'block';
+        toggleBtn.textContent = 'Show Chart';
+
+        // Render analysis
+        renderAnalysis();
+    } else {
+        // Switch to chart view
+        document.getElementById('chart-container').style.display = 'block';
+        document.getElementById('analysis-container').style.display = 'none';
+        toggleBtn.textContent = 'Show Analysis';
+
+        // Reinitialize and re-render chart
+        if (activityData.length > 0) {
+            // Reinitialize the chart to ensure proper SVG reference
+            chart = new ActogramChart('#actogram');
+            chart.render(activityData, currentDaysToShow, settings.epochDuration, settings.plotType, currentChartView);
+        } else {
+            // If no data, reload it
+            loadAndDisplayData();
+        }
+    }
+}
+
+/**
+ * Render sleep/wake analysis
+ */
+function renderAnalysis() {
+    try {
+        // Perform sleep/wake cycle detection
+        const analysisResult = AnalysisUtils.detectSleepWakeCycles(activityData, settings);
+        const trendAnalysis = AnalysisUtils.analyzeTrends(activityData);
+
+        // Create analysis HTML
+        const analysisContent = document.getElementById('sleep-analysis-content');
+        analysisContent.innerHTML = generateAnalysisHTML(analysisResult, trendAnalysis);
+    } catch (error) {
+        console.error('Error rendering analysis:', error);
+        document.getElementById('sleep-analysis-content').innerHTML =
+            '<p>Error generating analysis. Please try again.</p>';
+    }
+}
+
+/**
+ * Generate HTML for analysis results
+ */
+function generateAnalysisHTML(analysisResult, trendAnalysis) {
+    const { cycles, summary } = analysisResult;
+    const { trends, patterns } = trendAnalysis;
+
+    let html = '';
+
+    // Summary section
+    html += '<div class="analysis-section">';
+    html += '<h4>Summary</h4>';
+    html += `<p>Total days analyzed: ${summary.totalDays || 0}</p>`;
+    html += `<p>Days with sleep data: ${summary.daysWithSleepData || 0}</p>`;
+
+    if (summary.avgSleepDuration) {
+        const hours = Math.floor(summary.avgSleepDuration / 60);
+        const minutes = summary.avgSleepDuration % 60;
+        html += `<p>Average sleep duration: ${hours}h ${minutes}m</p>`;
+    }
+
+    if (summary.avgSleepStart) {
+        const sleepStart = new Date(0);
+        sleepStart.setHours(Math.floor(summary.avgSleepStart));
+        sleepStart.setMinutes((summary.avgSleepStart % 1) * 60);
+        html += `<p>Average sleep start time: ${sleepStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>`;
+    }
+
+    if (summary.avgWakeTime) {
+        const wakeTime = new Date(0);
+        wakeTime.setHours(Math.floor(summary.avgWakeTime));
+        wakeTime.setMinutes((summary.avgWakeTime % 1) * 60);
+        html += `<p>Average wake time: ${wakeTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>`;
+    }
+
+    html += '</div>';
+
+    // Trends section
+    html += '<div class="analysis-section">';
+    html += '<h4>Trends</h4>';
+
+    if (trends.avgActivity) {
+        const direction = trends.avgActivity.direction;
+        const magnitude = trends.avgActivity.magnitude.toFixed(2);
+        html += `<p>Overall activity: ${direction} (${magnitude} per day)</p>`;
+    }
+
+    if (patterns && patterns.length > 0) {
+        html += '<h5>Patterns</h5>';
+        patterns.forEach(pattern => {
+            html += `<p>${pattern.description}</p>`;
+        });
+    }
+
+    html += '</div>';
+
+    // Recent cycles section
+    html += '<div class="analysis-section">';
+    html += '<h4>Recent Sleep Cycles</h4>';
+    html += '<div class="cycle-list">';
+
+    // Show last 7 days
+    const recentCycles = cycles.slice(-7);
+    recentCycles.forEach(cycle => {
+        if (cycle.sleepStart && cycle.sleepEnd) {
+            const date = new Date(cycle.sleepStart).toLocaleDateString();
+            const start = new Date(cycle.sleepStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const end = new Date(cycle.sleepEnd).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const duration = cycle.sleepDuration;
+            const hours = Math.floor(duration / 60);
+            const minutes = duration % 60;
+
+            html += `<div class="cycle-item">`;
+            html += `<div class="cycle-date">${date}</div>`;
+            html += `<div class="cycle-times">${start} - ${end} (${hours}h ${minutes}m)</div>`;
+            html += `</div>`;
+        }
+    });
+
+    html += '</div>'; // cycle-list
+    html += '</div>'; // analysis-section
+
+    return html;
 }
 
 // Initialize when DOM is ready
