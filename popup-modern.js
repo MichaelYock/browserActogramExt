@@ -55,7 +55,7 @@ async function initialize() {
     currentChartView = uiPreferences.chartView || 'linear';
 
     // Initialize chart (create new instance)
-    chart = new ActogramChart('#actogram');
+    chart = new ModernActogramChart('#actogram');
 
     // Set up event listeners
     setupEventListeners();
@@ -131,7 +131,7 @@ function setupEventListeners() {
  */
 function navigatePeriod(direction) {
     const days = currentDaysToShow === 'all' ? 7 : currentDaysToShow;
-
+    
     if (direction > 0) {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -151,13 +151,13 @@ function navigatePeriod(direction) {
  */
 function setChartView(viewType) {
     currentChartView = viewType;
-
+    
     // Update view toggle buttons
     updateViewToggleButtons(viewType);
-
+    
     // Save preference
     StorageManager.saveUIPreferences({ chartView: viewType });
-
+    
     // Re-render chart
     loadAndDisplayData();
 }
@@ -170,7 +170,7 @@ function updateViewToggleButtons(activeView) {
     document.querySelectorAll('.view-toggle').forEach(btn => {
         btn.classList.remove('active');
     });
-
+    
     // Add active class to selected button
     const activeButton = document.querySelector(`.view-toggle[data-view="${activeView}"]`);
     if (activeButton) {
@@ -312,15 +312,15 @@ function generateInsightsHTML(analysisResult, trendAnalysis) {
     html += '<div class="insight-card">';
     html += '<div class="insight-header">';
     html += '<h3>Daily Patterns</h3>';
-
+    
     if (trends.avgActivity && trends.avgActivity.direction === 'increasing') {
         html += '<span class="trend positive">+12%</span>';
     } else if (trends.avgActivity && trends.avgActivity.direction === 'decreasing') {
         html += '<span class="trend negative">-5%</span>';
     }
-
+    
     html += '</div>';
-
+    
     if (summary.avgSleepDuration) {
         const hours = Math.floor(summary.avgSleepDuration / 60);
         const minutes = summary.avgSleepDuration % 60;
@@ -329,33 +329,33 @@ function generateInsightsHTML(analysisResult, trendAnalysis) {
     } else {
         html += '<p class="insight-description">Analyzing your daily activity patterns. Keep browsing to collect more data.</p>';
     }
-
+    
     html += '</div>';
 
     // Sleep Analysis Insight
     html += '<div class="insight-card">';
     html += '<div class="insight-header">';
     html += '<h3>Sleep Analysis</h3>';
-
+    
     if (summary.avgSleepDuration) {
         const hours = Math.floor(summary.avgSleepDuration / 60);
         const minutes = summary.avgSleepDuration % 60;
         html += `<span class="trend">${hours}h ${minutes}m</span>`;
     }
-
+    
     html += '</div>';
-
+    
     if (summary.avgSleepStart && summary.avgWakeTime) {
         const sleepStart = new Date(0);
         sleepStart.setHours(Math.floor(summary.avgSleepStart));
         sleepStart.setMinutes((summary.avgSleepStart % 1) * 60);
-
+        
         html += `<p class="insight-description">Consistent sleep pattern with average ${Math.floor(summary.avgSleepDuration / 60)}h ${summary.avgSleepDuration % 60}m. Recommended bedtime: 10:30 PM.</p>`;
         html += `<div class="sleep-pattern"><div class="sleep-bar"><div class="sleep-fill" style="width: 68%;"></div></div></div>`;
     } else {
         html += '<p class="insight-description">Sleep pattern analysis will be available after collecting more data.</p>';
     }
-
+    
     html += '</div>';
 
     // Productivity Tips Insight
@@ -379,7 +379,7 @@ function generateInsightsHTML(analysisResult, trendAnalysis) {
 function toggleAnalysisView() {
     // For now, just refresh the analysis
     renderAnalysis();
-
+    
     // Show a message that analysis is being refreshed
     UIUtils.showToast('Refreshing insights...', 'info');
 }

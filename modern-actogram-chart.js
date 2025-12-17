@@ -3,7 +3,7 @@
  * Enhanced visualization with improved performance and interactions
  */
 
-class ActogramChart {
+class ModernActogramChart {
     // Enhanced color thresholds for activity levels
     static colorThresholds = [0, 20, 40, 60, 80, 100];
     static colors = ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#1565C0'];
@@ -51,7 +51,7 @@ class ActogramChart {
         // Create enhanced color scale
         this.config.colorScale = d3.scaleThreshold()
             .domain([20, 40, 60, 80])
-            .range(ActogramChart.colors);
+            .range(ModernActogramChart.colors);
     }
 
     /**
@@ -122,7 +122,7 @@ class ActogramChart {
     showLoading(show) {
         const overlay = d3.select('.chart-overlay');
         if (overlay.empty()) return;
-
+        
         overlay.style('display', show ? 'flex' : 'none');
     }
 
@@ -250,7 +250,7 @@ class ActogramChart {
 
         // Enhanced Y axis with smart date formatting
         const yAxis = d3.axisLeft(yScale);
-
+        
         // Smart tick values for large date ranges
         if (gridData.length > 14) {
             const tickValues = gridData
@@ -407,7 +407,7 @@ class ActogramChart {
         // Pre-process data into a map for O(1) lookups
         const epochDurationMs = epochDuration * 60 * 1000;
         const dataMap = new Map();
-
+        
         for (const dataPoint of data) {
             const normalizedTime = Math.floor(dataPoint.timestamp / (epochDurationMs / 2)) * (epochDurationMs / 2);
             dataMap.set(normalizedTime, dataPoint);
@@ -663,31 +663,31 @@ class ActogramChart {
         // Pre-process data into a map for O(1) lookups
         const epochDurationMs = epochDuration * 60 * 1000;
         const dataMap = new Map();
-
+        
         for (const dataPoint of data) {
             const normalizedTime = Math.floor(dataPoint.timestamp / (epochDurationMs / 2)) * (epochDurationMs / 2);
             dataMap.set(normalizedTime, dataPoint);
         }
 
-        const daysToProcess = daysToShow === 'all' ?
-            Math.ceil((dataEnd - dataStart) / (1000 * 60 * 60 * 24)) :
+        const daysToProcess = daysToShow === 'all' ? 
+            Math.ceil((dataEnd - dataStart) / (1000 * 60 * 60 * 24)) : 
             daysToShow;
-
+        
         const heatmapData = [];
 
         for (let day = 0; day < daysToProcess; day++) {
             const currentDate = new Date(dataStart);
             currentDate.setDate(currentDate.getDate() + day);
-
+            
             const hours = [];
             for (let hour = 0; hour < 24; hour++) {
                 const epochTime = new Date(currentDate);
                 epochTime.setHours(hour, 0, 0, 0);
-
+                
                 // Find matching data point
                 const normalizedTime = Math.floor(epochTime.getTime() / (epochDurationMs / 2)) * (epochDurationMs / 2);
                 const dataPoint = dataMap.get(normalizedTime);
-
+                
                 hours.push({
                     hour,
                     time: epochTime,
@@ -695,7 +695,7 @@ class ActogramChart {
                     hasData: !!dataPoint
                 });
             }
-
+            
             heatmapData.push({
                 day: this.formatDate(currentDate),
                 hours
@@ -907,10 +907,10 @@ class ActogramChart {
 
         // Enhanced tooltip content with trend analysis
         let content = `<div class="tooltip-header">${dateStr} ${timeStr}</div>`;
-
+        
         if (epoch.hasData) {
             content += `<div class="tooltip-content">Activity: ${epoch.activityScore}%</div>`;
-
+            
             // Add trend indicator based on activity level
             if (epoch.activityScore > 80) {
                 content += `<div class="tooltip-content" style="color:#4CAF50">High activity period</div>`;
@@ -1070,5 +1070,5 @@ class ActogramChart {
 
 // Make available globally
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ActogramChart;
+    module.exports = ModernActogramChart;
 }

@@ -1,6 +1,6 @@
 # User specified
 roadmap.md
-UI-Designer.txt
+QWEN.md
 
 # Backup and temporary files
 *.backup
@@ -14,6 +14,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+.env
 
 # Editor Directories
 .vscode/

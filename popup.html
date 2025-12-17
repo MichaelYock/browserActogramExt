@@ -4,111 +4,175 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Browser Actogram</title>
+  <title>Browser Actogram - Modern UI</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
-  <div class="container">
-    <header>
-      <h1>Browser Actogram</h1>
-      <p class="subtitle">Browser Activity Monitor</p>
+  <div class="app-container">
+    <!-- Header with quick actions -->
+    <header class="app-header">
+      <div class="header-main">
+        <h1 class="app-title">Browser Actogram</h1>
+        <div class="header-actions">
+          <button class="icon-button" id="prevPeriod" title="Previous period">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" />
+            </svg>
+          </button>
+          <span id="dateRange" class="date-display">Loading...</span>
+          <button class="icon-button" id="nextPeriod" title="Next period">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="action-button" id="analysisBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+          </svg>
+          <span>Analysis</span>
+        </button>
+        <button class="action-button" id="exportBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" />
+          </svg>
+          <span>Export</span>
+        </button>
+        <button class="action-button" id="settingsBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+          </svg>
+          <span>Settings</span>
+        </button>
+      </div>
     </header>
 
-    <div class="controls">
-      <div class="date-controls">
-        <button id="prevDay" class="btn btn-small" title="Previous day" aria-label="Previous day">◀</button>
-        <span id="dateRange" class="date-display">Loading...</span>
-        <button id="nextDay" class="btn btn-small" title="Next day" aria-label="Next day">▶</button>
-      </div>
-
-      <div class="view-controls">
-        <label for="viewMode">View mode:</label>
-        <select id="viewMode">
-          <option value="days" selected>Days to show</option>
-          <option value="range">Date range</option>
-        </select>
-      </div>
-
-      <div class="view-controls">
-        <label for="chartView">Chart:</label>
-        <select id="chartView">
-          <option value="linear" selected>Linear</option>
-          <option value="spiral">Spiral</option>
-        </select>
-      </div>
-
-      <div class="view-controls" id="daysControl">
-        <label for="daysToShow">Days:</label>
-        <select id="daysToShow">
-          <option value="1">1 day</option>
-          <option value="2" selected>2 days</option>
-          <option value="3">3 days</option>
-          <option value="7">7 days</option>
-          <option value="30">30 days</option>
-          <option value="90">90 days</option>
-          <option value="all">All time</option>
-        </select>
-      </div>
-
-      <div class="view-controls" id="rangeControl" style="display: none;">
-        <label for="startDate">From:</label>
-        <input type="date" id="startDate" class="date-input">
-        <label for="endDate">To:</label>
-        <input type="date" id="endDate" class="date-input">
-        <button id="applyRange" class="btn btn-small">Apply</button>
-      </div>
-    </div>
-
-    <div id="chart-container">
-      <svg id="actogram"></svg>
-    </div>
-
-    <div class="legend">
-      <h3>Activity Level</h3>
-      <div class="legend-items">
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #E3F2FD;"></div>
-          <span>0-20%</span>
+    <!-- Main visualization area -->
+    <main class="app-main">
+      <div class="visualization-container">
+        <div class="chart-header">
+          <div class="view-controls">
+            <button class="view-toggle active" data-view="linear" id="linearView">Linear</button>
+            <button class="view-toggle" data-view="spiral" id="spiralView">Spiral</button>
+            <button class="view-toggle" data-view="heatmap" id="heatmapView">Heatmap</button>
+          </div>
+          <div class="time-controls">
+            <select class="time-selector" id="timeSelector">
+              <option value="1">1 Day</option>
+              <option value="2">2 Days</option>
+              <option value="7" selected>1 Week</option>
+              <option value="30">1 Month</option>
+              <option value="90">3 Months</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
         </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #90CAF9;"></div>
-          <span>21-40%</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #42A5F5;"></div>
-          <span>41-60%</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #1E88E5;"></div>
-          <span>61-80%</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background-color: #1565C0;"></div>
-          <span>81-100%</span>
+
+        <div class="chart-wrapper">
+          <svg id="actogram" class="actogram-chart"></svg>
+          <div class="chart-overlay">
+            <div class="loading-indicator" id="loadingIndicator">
+              <div class="spinner"></div>
+              <span>Processing data...</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="analysis-container" style="display: none;">
-      <h3>Sleep/Wake Analysis</h3>
-      <div id="sleep-analysis-content">
-        <!-- Analysis content will be populated by JavaScript -->
+      <!-- Insights panel -->
+      <aside class="insights-panel">
+        <div class="panel-header">
+          <h2>Activity Insights</h2>
+          <button class="icon-button small" id="refreshInsights" title="Refresh">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path
+                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="insights-content" id="insightsContent">
+          <div class="insight-card">
+            <div class="insight-header">
+              <h3>Loading Insights...</h3>
+            </div>
+            <p class="insight-description">Analyzing your activity patterns.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Legend and footer -->
+    <footer class="app-footer">
+      <div class="legend-container">
+        <h3>Activity Level</h3>
+        <div class="legend-items">
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #E3F2FD;"></div>
+            <span>0-20%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #90CAF9;"></div>
+            <span>21-40%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #42A5F5;"></div>
+            <span>41-60%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #1E88E5;"></div>
+            <span>61-80%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #1565C0;"></div>
+            <span>81-100%</span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <footer>
-      <button id="toggleViewBtn" class="btn btn-secondary">Show Analysis</button>
-      <button id="exportPngBtn" class="btn btn-secondary">Save as PNG</button>
-      <button id="printBtn" class="btn btn-secondary">Save as PDF</button>
-      <button id="exportBtn" class="btn btn-secondary">Export JSON</button>
-      <button id="exportCsvBtn" class="btn btn-secondary">Export CSV</button>
-      <button id="optionsBtn" class="btn btn-secondary">Settings</button>
+      <div class="export-controls">
+        <button class="export-button" id="exportPngBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" />
+          </svg>
+          PNG
+        </button>
+        <button class="export-button" id="exportPdfBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" />
+          </svg>
+          PDF
+        </button>
+        <button class="export-button" id="exportJsonBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+          </svg>
+          JSON
+        </button>
+        <button class="export-button" id="exportCsvBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+          </svg>
+          CSV
+        </button>
+      </div>
     </footer>
   </div>
 
   <!-- Tooltip -->
-  <div id="tooltip" class="tooltip"></div>
+  <div id="tooltip" class="modern-tooltip"></div>
+
   <!-- Scripts -->
   <script src="lib/d3.min.js"></script>
   <script src="ui-utils.js"></script>
@@ -117,8 +181,9 @@
   <script src="analysis-utils.js"></script>
   <script src="actogram-chart.js"></script>
   <script src="export-utils.js"></script>
+  <script src="keep-alive.js"></script>
+  <script src="worker-health.js"></script>
   <script src="popup.js"></script>
-
 </body>
 
 </html>

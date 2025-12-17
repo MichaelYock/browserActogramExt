@@ -125,6 +125,7 @@ const IndexedDBManager = {
      * @returns {Promise<Array>} Array of epoch objects
      */
     async getActivityData(startTime, endTime) {
+        console.log('Getting activity data from', startTime, 'to', endTime);
         if (!this.db) {
             throw new Error('IndexedDB not initialized');
         }
@@ -147,6 +148,10 @@ const IndexedDBManager = {
 
             request.onsuccess = () => {
                 const epochs = request.result || [];
+                console.log('Retrieved epochs count:', epochs.length);
+                if (epochs.length > 0) {
+                    console.log('Sample epochs:', epochs.slice(0, 3));
+                }
                 // Sort by timestamp ascending
                 epochs.sort((a, b) => a.timestamp - b.timestamp);
                 resolve(epochs);

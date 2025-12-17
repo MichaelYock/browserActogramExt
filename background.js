@@ -25,62 +25,71 @@ let currentEpoch = {
 // Initialization state
 let isInitialized = false;
 let isInitializing = false;
+let initializationPromise = null;
+let serviceWorkerRestarts = 0;
 
 /**
  * Initialize the background worker
  */
 async function initialize() {
-    if (isInitialized || isInitializing) return;
+    // Make initialization idempotent to prevent race conditions
+    if (isInitialized) return;
+    if (initializationPromise) return initializationPromise;
+
     isInitializing = true;
+    serviceWorkerRestarts++;
 
-    console.log('Browser Actogram: Initializing background worker');
+    console.log(`Browser Actogram: Initializing background worker (restart #${serviceWorkerRestarts})`);
 
-    try {
-        // Initialize storage
-        await StorageManager.initialize();
+    initializationPromise = (async () => {
+        try {
+            // Initialize storage
+            await StorageManager.initialize();
 
-        // Load settings
-        const settings = await StorageManager.getSettings();
-        currentEpoch.epochDuration = settings.epochDuration;
+            // Load settings
+            const settings = await StorageManager.getSettings();
+            currentEpoch.epochDuration = settings.epochDuration;
 
-        // Restore tracking state
-        const savedState = await StorageManager.getTrackingState();
-        if (savedState) {
-            trackingState = savedState;
-            // If we were tracking, we might need to account for time passed while SW was dead
-            // For now, let's just resume from now to avoid huge jumps if browser was closed
-            trackingState.lastCheckTime = Date.now();
+            // Restore tracking state
+            const savedState = await StorageManager.getTrackingState();
+            if (savedState) {
+                trackingState = savedState;
+                // If we were tracking, we might need to account for time passed while SW was dead
+                // For now, let's just resume from now to avoid huge jumps if browser was closed
+                trackingState.lastCheckTime = Date.now();
+            }
+
+            // Try to restore current epoch if exists
+            const savedEpoch = await StorageManager.getCurrentEpoch();
+            if (savedEpoch) {
+                currentEpoch = savedEpoch;
+            } else {
+                // Start new epoch
+                startNewEpoch();
+            }
+
+            // Start activity monitoring if it was previously enabled or just always start it
+            // The extension is designed to always track when installed
+            startTracking();
+
+            // Set up alarms using the safe creation method
+            await ensureAlarms();
+
+            isInitialized = true;
+            console.log('Browser Actogram: Initialization complete');
+        } catch (error) {
+            console.error('Browser Actogram: Initialization failed', error);
+            // Reset initialization state on failure
+            isInitialized = false;
+            isInitializing = false;
+            initializationPromise = null;
+            throw error;
+        } finally {
+            isInitializing = false;
         }
+    })();
 
-        // Try to restore current epoch if exists
-        const savedEpoch = await StorageManager.getCurrentEpoch();
-        if (savedEpoch) {
-            currentEpoch = savedEpoch;
-        } else {
-            // Start new epoch
-            startNewEpoch();
-        }
-
-        // Start activity monitoring if it was previously enabled or just always start it
-        // The extension is designed to always track when installed
-        startTracking();
-
-        // Set up daily cleanup
-        chrome.alarms.create('cleanup', { periodInMinutes: 1440 }); // 24 hours
-
-        // Set up sleep analysis (daily at 2 AM)
-        chrome.alarms.create('sleepAnalysis', {
-            delayInMinutes: 120, // 2 hours from now
-            periodInMinutes: 1440 // 24 hours
-        });
-
-        isInitialized = true;
-        console.log('Browser Actogram: Initialization complete');
-    } catch (error) {
-        console.error('Browser Actogram: Initialization failed', error);
-    } finally {
-        isInitializing = false;
-    }
+    return initializationPromise;
 }
 
 /**
@@ -153,13 +162,13 @@ async function updateActivity() {
     const now = Date.now();
     const timeDeltaSeconds = Math.max(0, Math.floor((now - trackingState.lastCheckTime) / 1000));
 
-    // Update current epoch total seconds
+    // Update current epoch total seconds by accumulating time
     if (!currentEpoch.startTime) {
         startNewEpoch();
     }
 
-    const elapsedSeconds = Math.floor((now - currentEpoch.startTime) / 1000);
-    currentEpoch.totalSeconds = elapsedSeconds;
+    // Accumulate time instead of resetting
+    currentEpoch.totalSeconds += timeDeltaSeconds;
 
     // If we were active, add to active seconds
     if (trackingState.lastState === 'active') {
@@ -173,7 +182,15 @@ async function updateActivity() {
 
     // Update state
     trackingState.lastCheckTime = now;
-    await StorageManager.saveTrackingState(trackingState);
+
+    // Periodically persist state to storage (every 30 seconds)
+    const shouldPersist = timeDeltaSeconds >= 30 ||
+                         currentEpoch.totalSeconds % 30 === 0 ||
+                         currentEpoch.activeSeconds % 30 === 0;
+
+    if (shouldPersist) {
+        await StorageManager.saveTrackingState(trackingState);
+    }
 
     // Check if epoch duration has elapsed
     const epochDurationMs = currentEpoch.epochDuration * 60 * 1000;
@@ -191,7 +208,8 @@ async function updateActivity() {
 async function checkIdleState() {
     try {
         // First update activity based on previous state and time passed
-        await updateActivity();
+        // Use gap-aware update to handle service worker inactivity
+        await updateActivityWithCheckpoint();
 
         // Then check current real state to ensure we are in sync
         const settings = await StorageManager.getSettings();
@@ -201,8 +219,19 @@ async function checkIdleState() {
             trackingState.lastState = currentState;
             await StorageManager.saveTrackingState(trackingState);
         }
+
+        // Add heartbeat timestamp for worker health monitoring
+        await chrome.storage.local.set({
+            lastHeartbeat: Date.now()
+        });
     } catch (error) {
         console.error('Error checking idle state:', error);
+        // Attempt to reinitialize if critical error
+        if (error.message && (error.message.includes('not initialized') || error.message.includes('permission'))) {
+            isInitialized = false;
+            initializationPromise = null;
+            await initialize();
+        }
     }
 }
 
@@ -213,7 +242,8 @@ async function handleIdleStateChange(newState) {
     console.log('Idle state changed:', newState);
 
     // Update activity up to this point using the OLD state
-    await updateActivity();
+    // Use gap-aware update to handle service worker inactivity
+    await updateActivityWithCheckpoint();
 
     // Now switch to NEW state
     trackingState.lastState = newState;
@@ -221,14 +251,118 @@ async function handleIdleStateChange(newState) {
 }
 
 /**
+ * Ensure alarms are properly set without duplicates
+ */
+async function ensureAlarms() {
+    const alarms = await chrome.alarms.getAll();
+    const alarmNames = alarms.map(a => a.name);
+
+    if (!alarmNames.includes('activityHeartbeat')) {
+        chrome.alarms.create('activityHeartbeat', { periodInMinutes: 1 });
+    }
+
+    if (!alarmNames.includes('cleanup')) {
+        chrome.alarms.create('cleanup', { periodInMinutes: 1440 });
+    }
+
+    if (!alarmNames.includes('sleepAnalysis')) {
+        chrome.alarms.create('sleepAnalysis', {
+            delayInMinutes: 120,
+            periodInMinutes: 1440
+        });
+    }
+}
+
+/**
+ * Get current browser idle state
+ */
+async function getBrowserState() {
+    try {
+        const settings = await StorageManager.getSettings();
+        return await chrome.idle.queryState(settings.idleThreshold);
+    } catch (error) {
+        console.error('Error getting browser state:', error);
+        // Default to active if we can't determine state
+        return 'active';
+    }
+}
+
+/**
+ * Update activity with gap detection
+ * Handles cases where service worker was inactive for extended periods
+ */
+async function updateActivityWithCheckpoint() {
+    if (!isInitialized) return;
+
+    const now = Date.now();
+    const elapsedMs = now - trackingState.lastCheckTime;
+
+    // Don't trust large time gaps - worker was likely dead
+    const MAX_TRUSTED_GAP_MS = 120000; // 2 minutes
+
+    if (elapsedMs > MAX_TRUSTED_GAP_MS) {
+        // Worker was dead too long - create a "gap" epoch
+        await createGapEpoch(trackingState.lastCheckTime, now);
+
+        // Query current state after gap instead of assuming continuation
+        const currentState = await getBrowserState();
+        trackingState.lastState = currentState; // Update to actual current state
+
+        trackingState.lastCheckTime = now;
+        await StorageManager.saveTrackingState(trackingState);
+        return;
+    }
+
+    // Normal update for short gaps
+    await updateActivity();
+}
+
+/**
+ * Create a gap epoch to indicate missing data
+ */
+async function createGapEpoch(startTime, endTime) {
+    try {
+        // Calculate gap duration with minimum of 1 minute
+        const gapDurationMinutes = Math.max(1, Math.round((endTime - startTime) / (60 * 1000)));
+
+        // Save a special epoch indicating missing data
+        const gapEpoch = {
+            timestamp: startTime,
+            activityScore: -1, // Special value for gaps
+            epochDuration: gapDurationMinutes,
+            isGap: true
+        };
+
+        await StorageManager.saveActivityEpoch(gapEpoch);
+        console.log('Created gap epoch due to service worker inactivity:', gapEpoch);
+    } catch (error) {
+        console.error('Error creating gap epoch:', error);
+    }
+}
+
+/**
  * Finalize current epoch and save it
  */
 async function finalizeEpoch() {
     try {
-        // Calculate activity score (0-100)
-        const activityScore = currentEpoch.totalSeconds > 0
-            ? Math.round((currentEpoch.activeSeconds / currentEpoch.totalSeconds) * 100)
-            : 0;
+        // Ensure we have valid data
+        if (!currentEpoch.startTime || currentEpoch.totalSeconds <= 0) {
+            console.warn('Invalid epoch data, skipping finalization');
+            startNewEpoch();
+            await StorageManager.saveCurrentEpoch(currentEpoch);
+            return;
+        }
+
+        // Cap active seconds at total (sanity check)
+        currentEpoch.activeSeconds = Math.min(
+            currentEpoch.activeSeconds,
+            currentEpoch.totalSeconds
+        );
+
+        // Calculate activity score with bounds (0-100)
+        const activityScore = Math.max(0, Math.min(100,
+            Math.round((currentEpoch.activeSeconds / currentEpoch.totalSeconds) * 100)
+        ));
 
         // Create epoch object
         const epoch = {
@@ -240,13 +374,16 @@ async function finalizeEpoch() {
         // Save to storage
         await StorageManager.saveActivityEpoch(epoch);
 
-        console.log('epoch saved:', epoch);
+        console.log('Epoch saved:', epoch);
 
         // Start new epoch
         startNewEpoch();
         await StorageManager.saveCurrentEpoch(currentEpoch);
     } catch (error) {
-        console.error('Error finalize epoch:', error);
+        console.error('Error finalizing epoch:', error);
+        // Start fresh epoch on error
+        startNewEpoch();
+        await StorageManager.saveCurrentEpoch(currentEpoch);
     }
 }
 
@@ -331,6 +468,32 @@ chrome.action.onClicked.addListener(() => {
     chrome.tabs.create({ url: 'popup.html' });
 });
 
+// Track when we're about to unload
+self.addEventListener('beforeunload', () => {
+    console.log('Service Worker about to unload - saving critical state');
+    // Quick save of minimal state
+    chrome.storage.local.set({
+        lastWorkerUnload: Date.now(),
+        workerRestarts: serviceWorkerRestarts
+    });
+});
+
+// Handle extension suspend more gracefully
+chrome.runtime.onSuspend.addListener(() => {
+    console.log('Service Worker being suspended - saving pending state');
+    // Quick sync of current state
+    const stateToSave = {
+        lastWorkerSuspend: Date.now(),
+        pendingEpoch: currentEpoch,
+        pendingTrackingState: trackingState
+    };
+
+    // Try to save state (this might not always complete)
+    chrome.storage.local.set(stateToSave).catch(error => {
+        console.warn('Failed to save state on suspend:', error);
+    });
+});
+
 // Initialize on script load (for service worker)
 initialize();
 
@@ -349,5 +512,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Return true to indicate we'll send a response asynchronously
         return true;
+    } else if (message.type === 'KEEP_ALIVE') {
+        // Just acknowledge keep-alive messages
+        sendResponse({ status: 'alive' });
+        return false; // Synchronous response
+    } else if (message.type === 'WAKE_UP') {
+        // Acknowledge wake up message
+        console.log('Worker received wake up signal');
+        sendResponse({ status: 'awake' });
+        return false; // Synchronous response
     }
 });
